@@ -1,0 +1,73 @@
+name: Mirror to deploy repo
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          path: CF2027
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: CF2027/package-lock.json
+
+      - name: Install dependencies
+        working-directory: CF2027
+        run: npm ci
+
+      - name: Test build
+        working-directory: CF2027
+        run: npx astro build
+
+      - name: Checkout destination
+        uses: actions/checkout@v4
+        with:
+          repository: LearnPRG-py/OakCodefest-2026
+          token: ${{ secrets.CF2026_PAT }}
+          path: CF2026
+          fetch-depth: 1
+
+      - name: Preserve CNAME
+        run: |
+          if [ -f CF2026/CNAME ]; then
+            cp CF2026/CNAME /tmp/CNAME
+          fi
+
+      - name: Wipe destination working tree
+        run: |
+          find CF2026 -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+      - name: Copy source contents into destination
+        run: |
+          rsync -a --exclude='.git' CF2027/ CF2026/
+
+      - name: Restore CNAME
+        run: |
+          if [ -f /tmp/CNAME ]; then
+            cp /tmp/CNAME CF2026/CNAME
+          fi
+
+      - name: Commit and push to CF2026
+        working-directory: CF2026
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Sync from CF2027@${{ github.sha }}"
+          git push origin HEAD:main
