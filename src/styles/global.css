@@ -92,6 +92,12 @@
       opacity: 0.8;
     }
   }
+
+  @keyframes date-border-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
 }
 
 @layer base {
@@ -229,6 +235,52 @@
     );
     clip-path: polygon(35% 0%, 65% 0%, 100% 100%, 0% 100%);
     mix-blend-mode: screen;
+  }
+
+  .hero-date-pill {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 9999px;
+    padding: 1px;
+    background: rgba(46, 230, 214, 0.28);
+    box-shadow:
+      0 0 26px rgba(46, 230, 214, 0.25),
+      0 12px 32px rgba(0, 0, 0, 0.42);
+  }
+
+  .hero-date-pill::before {
+    content: "";
+    position: absolute;
+    inset: -70%;
+    z-index: -1;
+    background: conic-gradient(
+      from 0deg,
+      rgba(46, 230, 214, 0.16),
+      rgba(92, 242, 224, 0.95),
+      rgba(34, 211, 238, 0.72),
+      rgba(20, 81, 76, 0.7),
+      rgba(46, 230, 214, 0.16)
+    );
+    animation: date-border-spin 6s linear infinite;
+  }
+
+  .hero-date-pill span {
+    display: inline-flex;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(11, 17, 19, 0.96), rgba(5, 8, 10, 0.88));
+    padding: 0.5rem 1rem;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 0 18px rgba(46, 230, 214, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-date-pill::before {
+      animation: none;
+    }
   }
 }
 
