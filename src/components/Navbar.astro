@@ -49,7 +49,7 @@ const isActive = (href: string) => {
                   class:list={[
                     "relative whitespace-nowrap rounded-full px-4 py-2 font-mono text-sm transition-colors duration-200",
                     item.label === "Register"
-                      ? "bg-primary text-on-primary font-semibold hover:bg-primary/90"
+                      ? "border border-primary/40 bg-primary/10 text-primary font-semibold hover:bg-primary/15 hover:text-foreground"
                       : isActive(item.href)
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground",
@@ -89,7 +89,7 @@ const isActive = (href: string) => {
               class:list={[
                 "block rounded-xl px-4 py-3 font-mono text-sm transition-colors",
                 item.label === "Register"
-                  ? "bg-primary text-on-primary font-semibold"
+                  ? "border border-primary/35 bg-primary/10 text-primary font-semibold"
                   : isActive(item.href)
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
@@ -117,6 +117,7 @@ const isActive = (href: string) => {
 
   const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const isCoarsePointer = () => window.matchMedia("(pointer: coarse)").matches;
+  const collapseDisabled = () => isCoarsePointer() || window.matchMedia("(max-width: 900px)").matches;
 
   let expandedWidth = 0;
   let collapsedWidth = 0;
@@ -155,7 +156,8 @@ const isActive = (href: string) => {
 
   function applyState() {
     if (!inner) return;
-    const collapsed = docked && !peeking;
+    const canCollapse = !collapseDisabled();
+    const collapsed = canCollapse && docked && !peeking;
     const reduced = prefersReducedMotion();
     const duration = reduced ? 0 : 0.55;
 
@@ -184,7 +186,7 @@ const isActive = (href: string) => {
     const next = window.scrollY > 40;
     if (next !== docked) {
       docked = next;
-      if (docked) setOpen(false);
+      if (docked && !collapseDisabled()) setOpen(false);
       applyState();
     }
   };
@@ -213,7 +215,7 @@ const isActive = (href: string) => {
     if (e.key === "Escape" && open) setOpen(false);
   });
   function bindElementListeners() {
-    if (!isCoarsePointer()) {
+    if (!collapseDisabled()) {
       inner?.addEventListener("mouseenter", () => {
         if (!docked) return;
         peeking = true;

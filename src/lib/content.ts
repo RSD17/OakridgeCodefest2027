@@ -306,6 +306,8 @@ export const ourTeam = {
     {
       key: "marketing",
       title: "Marketing",
+      description:
+        "The marketing team is responsible for promoting the event, managing outreach, creating publicity material, and ensuring that participants and schools stay informed and engaged throughout the Codefest journey.",
       members: [
         { name: "Kritika Yadav", role: "Head of Marketing", image: "/team/kritika-yadav.png" },
         { name: "Kyra Agarwal", role: "Marketing Member", image: "/team/kyra-agarwal.png" },

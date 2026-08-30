@@ -10,7 +10,7 @@ import { site, homeAbout, awards, homeContactFields } from "../lib/content";
 
 <BaseLayout
   title="Oakridge Codefest 2027 | Home"
-  description="Oakridge Codefest 2027 (v10): India's biggest overnight high-school hackathon. 5th–6th February 2027 at Oakridge International School, Bengaluru."
+  description="Oakridge Codefest 2027 (v10): India's biggest overnight school-based hackathon. 5th–6th February 2027 at Oakridge International School, Bengaluru."
 >
   <!-- Depth engine -->
   <div id="depth-engine-root" class="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
@@ -26,15 +26,18 @@ import { site, homeAbout, awards, homeContactFields } from "../lib/content";
       aria-hidden="true"
     >
     </div>
-    <p class="mb-6 font-mono text-xs uppercase tracking-[0.4em] text-primary sm:text-sm" data-reveal-hero>
-      {site.eventDateLabel}
+    <p
+      class="hero-date-pill mb-6 inline-flex font-mono text-xs uppercase tracking-[0.32em] text-foreground sm:text-sm"
+      data-reveal-hero
+    >
+      <span>{site.eventDateLabel}</span>
     </p>
 
     <h1
       class="text-balance font-display text-6xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-8xl xl:text-9xl"
       data-reveal-hero
     >
-      The <span class="text-primary">LARGEST</span><br />overnight hackathon<br />in India
+      The <span class="text-primary">LARGEST</span><br />overnight school-based <br class="sm:hidden" />hackathon<br />in India.
     </h1>
 
     <p class="mt-8 max-w-xl text-balance text-lg text-muted-foreground sm:text-xl" data-reveal-hero>
