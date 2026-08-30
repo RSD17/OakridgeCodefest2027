@@ -167,7 +167,7 @@ export const faqs: { question: string; answer: string }[] = [
     answer: "Oakridge International School Bangalore (refer to contact section for address).",
   },
   {
-    question: "Who do I contact for any querries?",
+    question: "Who do I contact for any queries?",
     answer:
       "Contact the core team members through either the emails or phone numbers (if urgent) in the contact section.",
   },
