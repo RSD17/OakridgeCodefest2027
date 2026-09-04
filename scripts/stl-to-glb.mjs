@@ -1,29 +1,5 @@
 #!/usr/bin/env node
-/**
- * STL -> GLB pipeline for the Codefest shark.
- *
- * The raw sculpt in 3d_models/ is print-oriented: arbitrary axes, arbitrary
- * scale, no index buffer, three duplicated vertices per triangle. The web
- * scene wants the opposite of all of that, so this script normalises the
- * model into the canonical pose src/three/shark.ts assumes:
- *
- *   +Z = nose        +Y = dorsal (up)        X = width
- *   centred on the origin, total length 1.0
- *
- * Orientation is derived from the mesh itself rather than hard-coded, so a
- * re-export of the sculpt from any DCC tool still lands the same way up.
- *
- * Usage:
- *   node scripts/stl-to-glb.mjs --in=3d_models/ocf3dshark-flat.stl \
- *                               --out=public/models/shark.glb
- *
- * Flags:
- *   --shading=auto|flat|smooth   normal generation (default auto)
- *   --angle=<deg>                crease angle for --shading=auto (default 40)
- *   --simplify=<0..1>            triangle budget as a ratio (default 1 = off)
- *   --error=<0..1>               simplification error tolerance (default 0.005)
- *   --no-quantize                skip KHR_mesh_quantization
- */
+// STL to GLB pipeline. Normalises the sculpt to +Z nose, +Y up, unit length.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -32,7 +8,7 @@ import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import { dedup, prune, quantize, simplify } from "@gltf-transform/functions";
 import { MeshoptSimplifier } from "meshoptimizer";
 
-// ---------------------------------------------------------------- arguments
+// Arguments
 
 function parseArgs(argv) {
   const opts = {
@@ -74,9 +50,9 @@ function parseArgs(argv) {
   return opts;
 }
 
-// -------------------------------------------------------------- STL reading
+// STL reading
 
-/** True when the buffer's declared triangle count matches its byte length. */
+// Binary when the declared triangle count matches the byte length
 function isBinarySTL(buf) {
   if (buf.length < 84) return false;
   const declared = buf.readUInt32LE(80);
@@ -88,7 +64,7 @@ function readBinarySTL(buf) {
   const positions = new Float32Array(count * 9);
   const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   for (let i = 0; i < count; i++) {
-    // 50 bytes per triangle: 12 normal, 36 vertices, 2 attribute bytes.
+    // 50 bytes per triangle
     const offset = 84 + i * 50 + 12;
     for (let k = 0; k < 9; k++) {
       positions[i * 9 + k] = view.getFloat32(offset + k * 4, true);
@@ -116,7 +92,7 @@ function readSTL(file) {
   return readASCIISTL(buf.toString("utf8"));
 }
 
-// ------------------------------------------------------------- orientation
+// Orientation
 
 function boundsOf(positions) {
   const min = [Infinity, Infinity, Infinity];
@@ -131,21 +107,15 @@ function boundsOf(positions) {
   return { min, max, size: max.map((m, i) => m - min[i]) };
 }
 
-/**
- * Work out which axis runs nose-to-tail, which way is up, and which end is
- * the nose, using shark morphology: the caudal fin is a blade — very thin
- * across the body but tall top-to-bottom — so the end of the longest axis
- * with the most extreme cross-section aspect ratio is the tail, and the
- * dominant axis of that cross-section is "up".
- */
+// Find the body axis, up axis and nose direction from the mesh
 function detectOrientation(positions) {
   const { min, max, size } = boundsOf(positions);
 
-  // Longest extent is the body axis.
+  // Body axis
   const lengthAxis = size.indexOf(Math.max(...size));
   const crossAxes = [0, 1, 2].filter((a) => a !== lengthAxis);
 
-  // Measure the cross-section of the outer 12% at each end of the body axis.
+  // Cross-section of each end
   const span = size[lengthAxis];
   const band = span * 0.12;
   const lowLimit = min[lengthAxis] + band;
@@ -166,7 +136,7 @@ function detectOrientation(positions) {
     }
   }
 
-  // Aspect ratio of each end's cross-section; the blade-like end is the tail.
+  // The blade-like end is the tail
   const aspect = (end) => {
     const a = Math.max(end.max[0] - end.min[0], 1e-6);
     const b = Math.max(end.max[1] - end.min[1], 1e-6);
@@ -175,7 +145,7 @@ function detectOrientation(positions) {
   const tailIsHigh = aspect(high) >= aspect(low);
   const tail = tailIsHigh ? high : low;
 
-  // At the tail the taller cross axis is the dorsal/ventral (up) axis.
+  // Up axis
   const tailSpans = [tail.max[0] - tail.min[0], tail.max[1] - tail.min[1]];
   const upAxis = crossAxes[tailSpans[0] >= tailSpans[1] ? 0 : 1];
   const widthAxis = crossAxes.find((a) => a !== upAxis);
@@ -184,24 +154,19 @@ function detectOrientation(positions) {
     lengthAxis,
     upAxis,
     widthAxis,
-    // Nose sits at the opposite end from the tail.
     noseSign: tailIsHigh ? -1 : 1,
     bounds: { min, max, size },
     diagnostics: { tailAspect: aspect(tail), noseAspect: aspect(tailIsHigh ? low : high) },
   };
 }
 
-/**
- * Rewrite positions into the canonical pose: +Z nose, +Y up, centred, unit
- * length. Returns the transformed array (in place) plus the applied scale.
- */
+// Rewrite positions into the canonical pose
 function canonicalise(positions, orient) {
   const { lengthAxis, upAxis, widthAxis, noseSign, bounds } = orient;
   const centre = bounds.max.map((m, i) => (m + bounds.min[i]) / 2);
   const scale = 1 / bounds.size[lengthAxis];
 
-  // Right-handed basis: X = width, Y = up, Z = nose. Flip width if the
-  // rearranged axes would mirror the model.
+  // Right-handed basis, flipping width if the axes would mirror
   const handedness =
     permutationSign(widthAxis, upAxis, lengthAxis) * noseSign < 0 ? -1 : 1;
 
@@ -214,20 +179,14 @@ function canonicalise(positions, orient) {
   return { positions: out, scale, handedness };
 }
 
-/** Sign of the permutation taking (0,1,2) to (a,b,c). */
+// Sign of the permutation taking (0,1,2) to (a,b,c)
 function permutationSign(a, b, c) {
   return Math.sign((b - a) * (c - a) * (c - b));
 }
 
-// ------------------------------------------------------- normals + welding
+// Normals and welding
 
-/**
- * Build an indexed mesh with crease-aware normals.
- *
- * Vertices that share a position are merged only when their faces lie within
- * `angleDeg` of each other, so curved flanks come out smooth while the hard
- * facets that give the "flat" sculpt its character keep their crisp edges.
- */
+// Indexed mesh with crease-aware normals, merging within angleDeg
 function buildIndexedMesh(positions, angleDeg) {
   const triCount = positions.length / 9;
   const faceNormals = new Float32Array(triCount * 3);
@@ -253,8 +212,7 @@ function buildIndexedMesh(positions, angleDeg) {
     }
   }
 
-  // Cluster corners by welded position. 1e-5 of unit length collapses the
-  // duplicate corners STL emits without merging genuinely distinct detail.
+  // Cluster corners by welded position
   const GRID = 1e5;
   const clusters = new Map();
   for (let f = 0; f < triCount; f++) {
@@ -276,7 +234,7 @@ function buildIndexedMesh(positions, angleDeg) {
   const indices = new Uint32Array(triCount * 3);
 
   for (const corners of clusters.values()) {
-    // Split the corners at this position into smoothing groups.
+    // Smoothing groups
     const groups = [];
     for (const corner of corners) {
       const f = (corner / 3) | 0;
@@ -295,7 +253,7 @@ function buildIndexedMesh(positions, angleDeg) {
         target = { nx: 0, ny: 0, nz: 0, corners: [] };
         groups.push(target);
       }
-      // Area weighting keeps large faces from being outvoted by slivers.
+      // Area weighted
       const w = faceAreas[f];
       target.nx += nx * w;
       target.ny += ny * w;
@@ -322,7 +280,7 @@ function buildIndexedMesh(positions, angleDeg) {
   };
 }
 
-// ------------------------------------------------------------------ export
+// Export
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
@@ -358,7 +316,7 @@ async function main() {
       `${mesh.triCount * 3} corners -> ${vertCount} vertices`,
   );
 
-  // --- glTF assembly -------------------------------------------------------
+  // glTF assembly
   const doc = new Document();
   doc.createBuffer();
   const scene = doc.createScene("shark");
@@ -390,8 +348,6 @@ async function main() {
     );
   }
   if (opts.quantize) {
-    // Matches the precision the previous pipeline shipped: 16-bit positions
-    // and normals, which the scene's fresnel shader is insensitive to.
     transforms.push(quantize({ quantizePosition: 16, quantizeNormal: 16 }));
   }
   await doc.transform(...transforms);
@@ -400,11 +356,7 @@ async function main() {
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   await io.write(outPath, doc);
 
-  // --- bounds sidecar ------------------------------------------------------
-  // shark.ts drives its swim-wave taper from the model's real nose/tail Z, so
-  // publish them rather than leaving the shader with stale constants.
-  // Bounds come from the pre-quantisation floats, which are exact by
-  // construction; counts come from the primitive as actually shipped.
+  // Bounds sidecar
   const final = boundsOf(mesh.position);
   const meta = {
     source: path.basename(inPath),

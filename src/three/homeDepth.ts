@@ -29,7 +29,6 @@ let initToken = 0;
 // Splash bridge
 export function triggerWaterSplash(clientX: number, clientY: number) {
   oceanShader?.addSplash(clientX, clientY);
-  // Disturbing the surface spooks the shark into a thrust burst.
   activeShark?.burst(0.5);
 }
 
@@ -66,24 +65,17 @@ function init() {
   depthScene = new DepthScene(sceneCanvas);
   const { scene, camera } = depthScene;
   const REST_FOG = { near: 4, far: 15 };
-  // Shark scale ceiling. The mascot has to read as dominant, so it carries a
-  // good share of the viewport width rather than sitting as a distant
-  // silhouette.
+  // Shark scale ceiling
   const SHARK_SCALE = 5.4;
-  // Share of the visible width the body should span. Phones get a bigger
-  // share: a narrow screen shows far less water, so matching the desktop
-  // fraction there would leave the mascot looking incidental. Sizing from the
-  // viewport rather than a fixed floor keeps this stable at every width.
+  // Viewport width share, narrow screens to wide
   const SPAN_NARROW = 0.72;
   const SPAN_WIDE = 0.36;
   // Swim path reference width
   const PATH_REF_HALF_WIDTH = 6.6;
-  // Shark frame bounds: half-diagonal of the model in the XZ plane
-  // (see public/models/shark.json), plus a little margin for the swim wave.
+  // Shark frame bounds
   const SHARK_HALF_EXTENT = 0.65;
 
-  // Fog colour tracks the descent so the haze never glows lighter than the
-  // water behind it once the background reaches the deep palette.
+  // Fog colour range
   const FOG_SURFACE = new THREE.Color(0x11525c);
   const FOG_ABYSS = new THREE.Color(0x070f1e);
   scene.fog = new THREE.Fog(FOG_SURFACE.getHex(), REST_FOG.near, REST_FOG.far);
@@ -101,32 +93,24 @@ function init() {
   attachPointer(shark);
 
   // Swim path
-  // One continuous route rather than a zigzag: two wide banking turns, each
-  // carried out through depth so the shark arcs away from the camera and back
-  // instead of reversing on the spot. Depth stays within roughly the same band
-  // as the fog so it never dissolves entirely at the bottom of the descent.
-  // Mid-scroll the camera sits at z 6.2 with fog far at 10, so the deepest
-  // point here stays inside ~9.4 units of it and the shark stays readable.
   const swimPath = new THREE.CatmullRomCurve3(
     [
-      // Enters high and off to the right
+      // Entry
       new THREE.Vector3(6.4, 1.5, -4.0),
-      // Long level glide left across the hero
+      // Hero glide
       new THREE.Vector3(2.2, 0.7, -3.0),
       new THREE.Vector3(-2.4, -0.5, -2.7),
-      // First turn, swinging out into deeper water
+      // First turn
       new THREE.Vector3(-5.0, -1.9, -3.4),
       new THREE.Vector3(-2.6, -3.1, -3.2),
-      // Long sweep back to the right at the floor of the descent
+      // Floor sweep
       new THREE.Vector3(2.0, -4.0, -3.4),
       new THREE.Vector3(4.4, -4.2, -3.0),
-      // Second turn, drifting back up toward the surface
+      // Second turn
       new THREE.Vector3(1.2, -3.0, -2.7),
       new THREE.Vector3(-1.0, -2.0, -3.2),
     ],
     false,
-    // Centripetal parameterisation cannot form the cusps and overshoots that
-    // uniform Catmull-Rom produces between unevenly spaced points.
     "centripetal",
   );
 
@@ -155,16 +139,13 @@ function init() {
 
   const motes = createMoteField();
   scene.add(motes);
-  // Drifting motes take their colour from the water around them: aqua up in
-  // the shallows, cold blue once the light is gone.
+  // Mote colour range
   const MOTE_SURFACE = new THREE.Color(0x8fdde2);
   const MOTE_ABYSS = new THREE.Color(0x6f9fc4);
   const moteColor = (motes.material as THREE.ShaderMaterial).uniforms.u_color
     .value as THREE.Color;
 
-  // The shark is lit by whatever water it is in: turquoise light off the
-  // surface up top, only cold ambient blue once the sun is gone. Shading it
-  // with fixed colours is what made it look pasted onto the scene.
+  // Shark and light colour ranges
   const SHARK_BASE_SURFACE = new THREE.Color(0x07222a);
   const SHARK_BASE_ABYSS = new THREE.Color(0x080f1c);
   const SHARK_GLOW_SURFACE = new THREE.Color(0x86d2d8);
@@ -193,10 +174,7 @@ function init() {
     const halfW = halfH * camera.aspect;
     const fit = THREE.MathUtils.clamp(halfW / PATH_REF_HALF_WIDTH, 0, 1);
 
-    // Responsive scale: solve for the scale that spans the target share of
-    // the viewport, then cap it so wide screens never inflate past the ceiling.
-    // Model length is exactly 1.0 (see public/models/shark.json), so the span
-    // in world units is the scale itself.
+    // Responsive scale
     const span = THREE.MathUtils.lerp(
       SPAN_NARROW,
       SPAN_WIDE,
@@ -222,12 +200,11 @@ function init() {
     pathPos.x = THREE.MathUtils.clamp(pathPos.x, -maxX, maxX);
     shark.group.position.copy(pathPos);
 
-    // Scrubbing the page hard gives the shark a shove; its tailbeat and
-    // amplitude are derived from real world speed inside shark.update().
+    // Scrub burst
     const scrubSpeed = Math.abs(scrollSmooth - prevSmooth) / Math.max(dt, 1e-4);
     if (scrubSpeed > 0.8) shark.burst(dt * 0.7);
 
-    // Haze and motes follow the water down.
+    // Depth-driven colours
     const waterDepth = oceanShader ? oceanShader.depth : 0;
     if (scene.fog) {
       (scene.fog as THREE.Fog).color.copy(FOG_SURFACE).lerp(FOG_ABYSS, waterDepth);
@@ -300,7 +277,7 @@ function init() {
     .to(camera.position, { y: -2.6, z: 6.2, ease: "none", duration: 1 }, 0)
     .to(scene.fog, { near: 2, far: 10, ease: "none", duration: 1 }, 0)
     .to(oceanShader, { intensity: 0.85, ease: "none", duration: 1 }, 0)
-    // Sunlit shallows -> open water, across the whole page.
+    // Surface to deep water
     .to(oceanShader, { depth: 1, ease: "none", duration: 2 }, 0)
     .to(camera.position, { y: 0.4, z: 9, ease: "none", duration: 1 }, 1)
     .to(scene.fog, { near: REST_FOG.near, far: REST_FOG.far, ease: "none", duration: 1 }, 1)
@@ -308,8 +285,7 @@ function init() {
   if (descentTl.scrollTrigger) scrollTriggers.push(descentTl.scrollTrigger);
 }
 
-// Pointer tracking. The shark reads this as a soft attraction, borrowing the
-// spring-follow idea from 21st.dev's "Follow pointer" motion example.
+// Pointer tracking
 let pointerHandler: ((e: PointerEvent) => void) | null = null;
 
 function attachPointer(shark: Shark) {

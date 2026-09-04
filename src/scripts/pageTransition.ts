@@ -1,21 +1,7 @@
 import { gsap } from "gsap";
 import type { TransitionBeforePreparationEvent } from "astro:transitions/client";
 
-// Shark-bite page transition.
-//
-//   1. Two jaws close over the current page - the bite.
-//   2. A water veil takes over, so the swap itself happens unseen.
-//   3. The veil breaks into bubbles and drains downward, so the new page
-//      surfaces out of the water rather than simply appearing.
-//
-// Step 3 is a luma-threshold dissolve, the technique behind 21st.dev's
-// "Shader Reveal Transition" (educalvolpz), run on a 2D canvas so it costs
-// nothing until a navigation actually starts.
-//
-// Everything is confined to the overlay on purpose: `filter` and `transform`
-// create a containing block for descendant fixed elements, and #main-content
-// holds the fixed depth-engine root, so animating the page itself would
-// detach the WebGL canvases mid-transition.
+// Shark-bite page transition
 
 const TEETH = 11;
 const JAW_ARC = 6;
@@ -23,28 +9,20 @@ const JAW_OPEN_TOP = -30;
 const JAW_OPEN_BOTTOM = 130;
 const JAW_CLOSED = 50;
 
-// Overall pace of the whole transition; below 1 plays it slower. Applied as a
-// timeScale so every duration and relative offset below stays authored at its
-// natural value and keeps its proportions.
+// Playback pace, below 1 is slower
 const SPEED = 0.6;
 
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** Deterministic 0-1 noise, so the jaw is irregular but identical each time. */
+// Deterministic 0-1 noise
 function jitter(i: number, salt: number): number {
   const v = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
   return v - Math.floor(v);
 }
 
-/**
- * One jaw as a closed path across the 0-100 viewBox. The biting edge follows
- * a shallow arc, because a real jaw is curved rather than flat, and no two
- * teeth share a length or sit exactly on centre - a perfectly regular row
- * reads as a sawblade rather than a mouth. `dir` is 1 for the upper jaw,
- * -1 for the lower.
- */
+// One jaw as a closed path, dir 1 is upper and -1 is lower
 function jawPath(dir: 1 | -1): string {
   const salt = dir > 0 ? 1 : 2;
   const seg: string[] = [`M 0 ${-70 * dir}`, `L 100 ${-70 * dir}`];
@@ -53,8 +31,7 @@ function jawPath(dir: 1 | -1): string {
     const arc = Math.sin((x / 100) * Math.PI) * JAW_ARC * dir;
     seg.push(`L ${x.toFixed(2)} ${arc.toFixed(2)}`);
     if (i > 0) {
-      // Nudge the tip off centre and vary its length; teeth toward the middle
-      // of the jaw run longer, as they do on a real one.
+      // Tooth tip
       const lean = (jitter(i, salt) - 0.5) * 0.42;
       const xm = ((i - 0.5 + lean) / TEETH) * 100;
       const arcm = Math.sin((xm / 100) * Math.PI) * JAW_ARC * dir;
@@ -85,8 +62,7 @@ let holes: Hole[] = [];
 let bubbles: Bubble[] = [];
 
 function seed(w: number, h: number) {
-  // Density rather than a fixed count, so the dissolve has the same grain on
-  // a phone as on a desktop.
+  // Hole count scales with area
   const count = Math.min(Math.max(Math.round((w * h) / 16000), 55), 190);
   holes = Array.from({ length: count }, () => {
     const y = Math.random() * h;
@@ -94,8 +70,7 @@ function seed(w: number, h: number) {
       x: Math.random() * w,
       y,
       r: (0.1 + Math.random() * 0.2) * Math.max(w, h),
-      // Higher water clears first, so the waterline recedes downward and the
-      // page reads as rising out of it.
+      // Higher water clears first
       delay: (y / h) * 0.5 + Math.random() * 0.16,
     };
   });
@@ -119,7 +94,7 @@ function paint(ctx: CanvasRenderingContext2D, w: number, h: number, reveal: numb
   ctx.fillRect(0, 0, w, h);
 
   if (reveal > 0) {
-    // Erode the water away as expanding, soft-edged bubbles.
+    // Erode the water
     ctx.globalCompositeOperation = "destination-out";
     for (const hole of holes) {
       const local = (reveal - hole.delay) / Math.max(1 - hole.delay, 1e-3);
@@ -137,7 +112,7 @@ function paint(ctx: CanvasRenderingContext2D, w: number, h: number, reveal: numb
     ctx.globalCompositeOperation = "source-over";
   }
 
-  // Bubbles rising through whatever water is left, fading as it clears.
+  // Rising bubbles
   const swarm = Math.sin(Math.min(reveal, 1) * Math.PI);
   if (swarm > 0.01) {
     for (const b of bubbles) {
@@ -179,9 +154,7 @@ function getStage(): Stage | null {
   const h = window.innerHeight;
   const needW = Math.round(w * dpr);
   const needH = Math.round(h * dpr);
-  // Assigning width/height wipes the backing store, so only do it on a real
-  // size change. Otherwise the veil would blank at the moment of the swap,
-  // which is precisely when it has to stay opaque.
+  // Resize only on a real size change, it clears the canvas
   if (canvas.width !== needW || canvas.height !== needH) {
     canvas.width = needW;
     canvas.height = needH;
@@ -238,29 +211,28 @@ document.addEventListener("astro:before-preparation", (e: Event) => {
 
     const tl = gsap.timeline();
     tl.timeScale(SPEED);
-    // The bite accelerates into the snap rather than easing out of it.
+    // Bite
     tl.to([top, bottom], {
       v: JAW_CLOSED,
       duration: 0.4,
       ease: "power3.in",
       onUpdate: apply,
     })
-      // Impact jolt.
+      // Impact jolt
       .fromTo(
         stage.jaws,
         { x: -7 },
         { x: 0, duration: 0.45, ease: "elastic.out(1, 0.32)" },
         ">-0.02",
       )
-      // Swallowed: the water takes over so the swap happens unseen.
+      // Water takes over
       .add(() => {
         paint(stage.ctx, stage.w, stage.h, 0);
         gsap.set(stage.canvas, { opacity: 1 });
       }, "<")
       .to(stage.jaws, { opacity: 0, duration: 0.35, ease: "power2.out" }, "<+0.15");
 
-    // Fetch while the jaws are closing rather than after, so the network
-    // hides inside the bite instead of adding to it.
+    // Fetch during the bite
     const loaded = originalLoader();
     await tl.then();
     await loaded;
@@ -271,8 +243,7 @@ document.addEventListener("astro:after-swap", () => {
   const stage = getStage();
   if (!stage) return;
 
-  // The stage persists across the swap, but the canvas backing store is
-  // resized above, which clears it. Repaint before revealing anything.
+  // Repaint before revealing
   if (!holes.length) seed(stage.w, stage.h);
   gsap.set(stage.jaws, { opacity: 0 });
   gsap.set(stage.canvas, { opacity: 1 });
@@ -294,6 +265,6 @@ document.addEventListener("astro:after-swap", () => {
       ease: "power2.inOut",
       onUpdate: () => paint(stage.ctx, stage.w, stage.h, state.reveal),
     })
-    // Whatever haze is left settles out.
+    // Settle
     .to(stage.canvas, { opacity: 0, duration: 0.35, ease: "power1.out" }, "-=0.35");
 });
