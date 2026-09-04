@@ -3,10 +3,7 @@ dist/
 
 node_modules/
 
-# Source 3D art. ocf3dshark.stl alone is ~156 MB; git would keep that blob in
-# history forever. The web-ready model it produces (public/models/shark.glb,
-# ~143 KB) IS committed, and scripts/stl-to-glb.mjs regenerates it from the
-# source. Use Git LFS if the raw STL ever needs to be versioned.
+# Source 3D art. The built model is committed; `npm run model` rebuilds it.
 3d_models/
 
 npm-debug.log*
