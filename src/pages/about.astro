@@ -40,17 +40,6 @@ const galleryRows = [
 >
   <!-- Hero -->
   <section class="relative overflow-hidden px-4 pb-16 pt-36 text-center sm:px-6" data-about-scene>
-    <div
-      class="pointer-events-none absolute inset-0 -z-10 bg-grid-circuit [mask-image:radial-gradient(ellipse_70%_70%_at_50%_0%,black,transparent)]"
-      data-about-parallax
-      data-about-y="-110"
-      data-about-scale="1.12"
-    ></div>
-    <div
-      class="pointer-events-none absolute inset-x-0 -z-10 h-px bg-linear-to-r from-transparent via-primary/45 to-transparent opacity-60 shadow-[0_0_22px_rgba(46,230,214,0.35)]"
-      style="top: var(--about-scan, 0%);"
-      aria-hidden="true"
-    ></div>
     <HudCorners />
 
     <div data-about-parallax data-about-y="-32">
@@ -80,12 +69,6 @@ const galleryRows = [
 
   <!-- Mission and vision -->
   <section class="relative overflow-hidden border-t border-border py-20 sm:py-28">
-    <div
-      class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full bg-[linear-gradient(115deg,transparent_0%,rgba(46,230,214,0.08)_38%,transparent_68%)] opacity-60"
-      data-about-parallax
-      data-about-y="-70"
-      aria-hidden="true"
-    ></div>
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <SectionHeading title={missionVision.heading} align="center" class="mb-14" />
       <div class="glass glass-glow grid grid-cols-1 gap-10 rounded-3xl p-6 sm:p-10 lg:grid-cols-5 lg:gap-12 lg:p-12">
@@ -113,12 +96,6 @@ const galleryRows = [
 
   <!-- What is Codefest -->
   <section class="relative overflow-hidden border-t border-border bg-surface/30 px-4 py-20 sm:px-6 sm:py-28">
-    <div
-      class="pointer-events-none absolute inset-0 -z-10 bg-grid-circuit opacity-30 [mask-image:linear-gradient(180deg,transparent,black_25%,black_75%,transparent)]"
-      data-about-parallax
-      data-about-y="75"
-      aria-hidden="true"
-    ></div>
     <SectionHeading title={whatIsCodefest.heading} align="center" class="mb-14" />
     <div data-about-parallax data-about-y="-28" data-about-scale="1.02">
       <TerminalPanel title="python3 aboutcodefest.py" paragraphs={whatIsCodefest.paragraphs} />
@@ -173,12 +150,6 @@ const galleryRows = [
 
   <!-- Gallery -->
   <section class="relative overflow-hidden border-t border-border py-20 sm:py-28">
-    <div
-      class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_45%_at_50%_45%,rgba(46,230,214,0.08),transparent_70%)]"
-      data-about-parallax
-      data-about-y="-80"
-      aria-hidden="true"
-    ></div>
     <SectionHeading
       eyebrow="Archive"
       title={gallery.heading}
@@ -218,13 +189,6 @@ const galleryRows = [
 
   <!-- Our team -->
   <section class="relative overflow-hidden border-t border-border py-20 sm:py-28">
-    <div
-      class="pointer-events-none absolute inset-0 -z-10 bg-grid-circuit opacity-25 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_18%,black,transparent)]"
-      data-about-parallax
-      data-about-y="120"
-      data-about-scale="1.08"
-      aria-hidden="true"
-    ></div>
     <div class="mx-auto max-w-6xl">
       <TeamRoster
         heading={ourTeam.heading}

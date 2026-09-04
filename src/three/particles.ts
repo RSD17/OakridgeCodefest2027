@@ -55,7 +55,7 @@ export function createMoteField(count = 220): THREE.Points {
     uniforms: {
       u_time: { value: 0 },
       u_pixelRatio: { value: Math.min(window.devicePixelRatio || 1, 1.75) },
-      u_color: { value: new THREE.Color("#2ee6d6") },
+      u_color: { value: new THREE.Color("#8fdde2") },
     },
     transparent: true,
     depthWrite: false,
@@ -87,8 +87,8 @@ function makeCodeTexture(text: string): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.font = "600 40px 'JetBrains Mono', monospace";
-  ctx.fillStyle = "rgba(46, 230, 214, 0.85)";
-  ctx.shadowColor = "rgba(46, 230, 214, 0.8)";
+  ctx.fillStyle = "rgba(116, 192, 201, 0.85)";
+  ctx.shadowColor = "rgba(116, 192, 201, 0.8)";
   ctx.shadowBlur = 18;
   ctx.textBaseline = "middle";
   ctx.fillText(text, 16, canvas.height / 2);

@@ -22,8 +22,10 @@ uniform vec4 u_splash[8];  // xy = NDC position, z = start time, w = strength
 #define u_scale u_shape.x
 #define u_intensity u_shape.y
 #define u_warp u_shape.w
+#define u_depth u_shape.z
 #define u_vignette u_finish.x
 #define u_grain u_finish.y
+#define u_sun u_finish.z
 
 float hash21(vec2 p) {
   p = fract(p * vec2(234.34, 435.345));
@@ -67,6 +69,39 @@ vec3 palette(float x) {
   return col;
 }
 
+// Sunlight breaking through the surface. Beams are summed sines in a
+// coordinate that converges toward a point above the frame, so they splay
+// downward the way real shafts do. Technique referenced from 21st.dev's
+// "God Rays" shader by paper-design (Paper Shaders, Apache-2.0).
+float sunShafts(vec2 uv, float t) {
+  float conv = mix(0.26, 1.0, clamp(1.0 - uv.y, 0.0, 1.0));
+  float x = (uv.x - 0.5) / max(conv, 0.08);
+
+  // The surface overhead is moving, so the shafts wander with it instead of
+  // sliding at a constant rate. Drifting the coordinate itself bends each
+  // beam along its length rather than translating the whole set rigidly.
+  x += (fbm(vec2(uv.y * 1.6, t * 0.05)) - 0.5) * 0.7;
+
+  // Three incommensurate rates, so the pattern never visibly repeats.
+  float beams =
+      sin(x * 5.0 + t * 0.13) * 0.55
+    + sin(x * 9.3 - t * 0.09) * 0.30
+    + sin(x * 17.1 + t * 0.06) * 0.15;
+  beams = beams * 0.5 + 0.5;
+  beams = pow(clamp(beams, 0.0, 1.0), 4.0);
+
+  // Swell passing overhead lets the light through unevenly.
+  float swell = 0.82 + 0.18 * sin(t * 0.19 + uv.x * 1.7)
+                     * cos(t * 0.11 - uv.y * 0.9);
+  beams *= swell;
+
+  // Brightest just under the surface, dying off further down the frame.
+  float falloff = pow(clamp(uv.y, 0.0, 1.0), 1.6);
+  // Soften the very top so the shafts emerge instead of being cut off.
+  falloff *= smoothstep(1.0, 0.86, uv.y) * 0.6 + 0.4;
+  return beams * falloff;
+}
+
 vec3 shade(vec2 uv, vec2 p, float t) {
   float y = uv.y
     + sin(uv.x * (3.0 + u_intensity * 9.0) + t * 0.8) * 0.08
@@ -102,7 +137,7 @@ void main() {
     p += dir * ring * 0.012 * strength;
     float crest = pow(max(ring, 0.0), 2.2);
     float crestMult = isTrail ? 0.22 : 0.35;
-    splashGlow += vec3(0.85, 1.0, 0.98) * crest * crestMult;
+    splashGlow += vec3(0.80, 0.93, 1.0) * crest * crestMult;
   }
 
   uv = p * min(u_resolution.x, u_resolution.y) / u_resolution.xy + 0.5;
@@ -115,9 +150,18 @@ void main() {
   vec3 col = shade(uv, p, u_time);
   col += splashGlow;
 
+  // Shafts only exist near the surface; u_sun is faded out on descent.
+  if (u_sun > 0.001) {
+    float shafts = sunShafts(screenUv, u_time);
+    // Break the beams up with the same noise field that drives the water.
+    shafts *= 0.62 + 0.38 * fbm(vec2(screenUv.x * 3.0, u_time * 0.05));
+    col += vec3(0.45, 0.82, 0.85) * shafts * u_sun;
+  }
+
   if (u_vignette > 0.0001) {
+    // The deeper the descent, the further the edges close in.
     float vd = length(screenUv - 0.5) * 1.41421356;
-    col *= 1.0 - u_vignette * smoothstep(0.35, 1.0, vd);
+    col *= 1.0 - u_vignette * (1.0 + u_depth * 0.55) * smoothstep(0.35, 1.0, vd);
   }
   if (u_grain > 0.0001) {
     col += (grainHash(gl_FragCoord.xy) - 0.5) * u_grain;
@@ -127,13 +171,29 @@ void main() {
 }
 `;
 
-// Depth Charge palette: abyss black -> deep teal -> electric teal -> foam.
-const PALETTE: [number, number, number][] = [
-  [0x05 / 255, 0x08 / 255, 0x0a / 255],
-  [0x0e / 255, 0x2e / 255, 0x2c / 255],
-  [0x14 / 255, 0x51 / 255, 0x4c / 255],
-  [0x2e / 255, 0xe6 / 255, 0xd6 / 255],
+// Depth Charge palette: abyss -> deep navy -> ocean blue -> lit surface.
+// Navy ramp follows 21st.dev's "Harbor Blue" theme (slate-900 family), which
+// carries the premium weight a near-black blue was losing.
+// Weighted toward the dark end of the ramp, so the page reads as deep water
+// rather than a shallow lagoon.
+const rgb = (hex: number): [number, number, number] => [
+  ((hex >> 16) & 255) / 255,
+  ((hex >> 8) & 255) / 255,
+  (hex & 255) / 255,
 ];
+
+// Sunlit shallows, referenced from 21st.dev's "Oceanic Depths" shader by
+// serafimcloud. Turquoise rather than blue because water absorbs red
+// wavelengths first: shallow sunlit water really does read aquamarine, and
+// only deep open water goes pure blue. So the descent to PALETTE_ABYSS is
+// the actual physical progression, not just a stylistic one.
+// Luminance per stop is matched to the abyss ramp, and the light is kept in
+// the top third, so the hero headline keeps its contrast at every depth.
+const PALETTE_SURFACE = [0x031117, 0x061f27, 0x0f5560, 0x74d2d8].map(rgb);
+
+// Open water far below the light. Even the brightest stop here is darker
+// than the shallows' darkest, so the descent reads unmistakably.
+const PALETTE_ABYSS = [0x03060c, 0x070f1e, 0x0f172a, 0x1e3f6b].map(rgb);
 
 export interface OceanShaderOptions {
   cursorEnabled?: boolean;
@@ -153,6 +213,9 @@ export class OceanShader {
   private cursorEnabled: boolean;
   // Wave intensity
   intensity: number;
+  /** 0 at the sunlit surface, 1 in deep water. Driven by page scroll. */
+  depth = 0;
+  private paletteData = new Float32Array(12);
   private static readonly SPLASH_SLOTS = 8;
   // Cursor-trail threshold
   private static readonly TRAIL_MIN_DIST = 11;
@@ -234,8 +297,21 @@ export class OceanShader {
       splash: gl.getUniformLocation(program, "u_splash"),
     };
 
-    gl.uniform3fv(this.uni.colors, new Float32Array(PALETTE.flat()));
-    gl.uniform4f(this.uni.finish, 0.35, 0.045, 0, 0);
+    this.uploadPalette();
+  }
+
+  /** Blend the two palettes by depth and hand the result to the shader. */
+  private uploadPalette() {
+    const gl = this.gl;
+    if (!gl) return;
+    const d = Math.min(Math.max(this.depth, 0), 1);
+    for (let i = 0; i < 4; i++) {
+      for (let c = 0; c < 3; c++) {
+        this.paletteData[i * 3 + c] =
+          PALETTE_SURFACE[i][c] + (PALETTE_ABYSS[i][c] - PALETTE_SURFACE[i][c]) * d;
+      }
+    }
+    gl.uniform3fv(this.uni.colors, this.paletteData);
   }
 
   private onPointerMove = (e: PointerEvent) => {
@@ -311,7 +387,12 @@ export class OceanShader {
       (now - this.start) / 1000,
       4,
     );
-    this.gl.uniform4f(this.uni.shape, 1.8, this.intensity, 0, 0.25);
+    const depth = Math.min(Math.max(this.depth, 0), 1);
+    this.gl.uniform4f(this.uni.shape, 1.8, this.intensity, depth, 0.25);
+    // Shafts are gone well before the bottom of the page.
+    const sun = 1 - Math.min(depth / 0.55, 1);
+    this.gl.uniform4f(this.uni.finish, 0.35, 0.045, sun * sun, 0);
+    this.uploadPalette();
 
     const splashData = new Float32Array(OceanShader.SPLASH_SLOTS * 4);
     for (let i = 0; i < OceanShader.SPLASH_SLOTS; i++) {

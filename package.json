@@ -9,7 +9,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "model": "node scripts/stl-to-glb.mjs --in=3d_models/ocf3dshark-flat.stl --out=public/models/shark.glb --simplify=0.5 --error=0.004"
   },
   "dependencies": {
     "@lucide/astro": "^1.26.0",
@@ -21,6 +22,10 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@types/three": "^0.185.1"
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
+    "@types/three": "^0.185.1",
+    "meshoptimizer": "^1.2.0"
   }
 }

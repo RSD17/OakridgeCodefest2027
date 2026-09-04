@@ -35,14 +35,48 @@ const { title, description } = Astro.props;
     >
     </div>
 
+    <!-- Shark-bite page transition. Driven by scripts/pageTransition.ts;
+         persists across swaps so the veil keeps covering the screen while
+         the new document is put in place. -->
     <div
-      id="dive-wipe"
+      id="page-transition"
       transition:persist
-      transition:name="dive-wipe"
       class="pointer-events-none fixed inset-0 z-[150]"
-      style="clip-path: circle(0% at 50% 50%); background: radial-gradient(circle at center, #2ee6d6 0%, #14514c 55%, #05080a 100%);"
+      style="opacity: 0; visibility: hidden;"
       aria-hidden="true"
     >
+      <canvas id="pt-veil" class="absolute inset-0 h-full w-full"></canvas>
+      <svg
+        id="pt-jaws"
+        class="absolute inset-0 h-full w-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id="pt-jaw-top-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#01050a" />
+            <stop offset="100%" stop-color="#08131b" />
+          </linearGradient>
+          <linearGradient id="pt-jaw-bottom-fill" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="#01050a" />
+            <stop offset="100%" stop-color="#08131b" />
+          </linearGradient>
+        </defs>
+        <path
+          id="pt-jaw-top"
+          fill="url(#pt-jaw-top-fill)"
+          stroke="rgba(180, 232, 238, 0.85)"
+          stroke-width="1.6"
+          vector-effect="non-scaling-stroke"
+        ></path>
+        <path
+          id="pt-jaw-bottom"
+          fill="url(#pt-jaw-bottom-fill)"
+          stroke="rgba(180, 232, 238, 0.85)"
+          stroke-width="1.6"
+          vector-effect="non-scaling-stroke"
+        ></path>
+      </svg>
     </div>
 
     <div

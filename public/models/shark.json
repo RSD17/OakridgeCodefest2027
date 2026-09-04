@@ -1,0 +1,10 @@
+{
+  "source": "ocf3dshark-flat.stl",
+  "generated": "2026-09-04T10:17:31.162Z",
+  "triangles": 21010,
+  "vertices": 13783,
+  "noseZ": 0.5,
+  "tailZ": -0.5,
+  "halfWidth": 0.2744,
+  "halfHeight": 0.1727
+}

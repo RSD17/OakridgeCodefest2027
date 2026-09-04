@@ -91,7 +91,7 @@ function spawnDroplets(x: number, y: number) {
     dot.style.width = `${width}px`;
     dot.style.height = `${height}px`;
     dot.style.borderRadius = "9999px";
-    dot.style.background = "linear-gradient(180deg, rgba(245, 255, 255, 0.95), rgba(170, 244, 236, 0.38) 62%, rgba(46, 230, 214, 0.12))";
+    dot.style.background = "linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(191, 219, 254, 0.38) 62%, rgba(116, 192, 201, 0.12))";
     dot.style.boxShadow = "0 0 7px rgba(206, 255, 249, 0.28)";
     dot.style.filter = "blur(0.05px)";
     dot.style.transformOrigin = "50% 50%";
